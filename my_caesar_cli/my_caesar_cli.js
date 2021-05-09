@@ -58,13 +58,13 @@ function transformChunk(chunk) {
 
 function isMandatoryParamsFilled(options) {
   if (!options.shift || !options.action) {
-    process.stderr.write(`The 'shift' and 'action' are mandatory parameters. Please check that you've specified them correctly.`);
+    process.stderr.write('The \'shift\' and \'action\' are mandatory parameters. Please check that you\'ve specified them correctly. \n');
     return Promise.reject();
   }
   return Promise.resolve();
 }
 
-function isOutputFileExists(sFileName) {
+function isFileExists(sFileName) {
   if (!sFileName) {
     return Promise.resolve();
   }
@@ -72,7 +72,7 @@ function isOutputFileExists(sFileName) {
   return new Promise((res, rej) => {
     fs.open(sFileName, (err) => {
       if (err) {
-        process.stderr.write(`The file ${sFileName} doesn't exist`);
+        process.stderr.write(`The file ${sFileName} doesn't exist \n`);
         rej();
       } else {
         res();
@@ -82,17 +82,21 @@ function isOutputFileExists(sFileName) {
 }
 
 function subscribeOnErrors(readableStream, writeableStream, transformStream) {
-  readableStream.on('error', (err) => {
-    process.stderr.write(`Input file doesn't exist: ${err.message}`);
-  });
+  const onWritableStreamError = (err) => {
+    process.stderr.write('Output file doesn\'t exist \n');
+  };
+  const onTranformStreamError = (err) => {
+    process.stderr.write('An error occured while data transformation \n');
+  };
+  const onReadableStreamError = (err) => {
+    process.stderr.write('Input file doesn\'t exist \n');
+    writeableStream.off('error', onWritableStreamError);
+    transformStream.off('error', onTranformStreamError);
+  };
 
-  writeableStream.on('error', (err) => {
-    process.stderr.write(`Output file doesn't exist: ${err.message}`);
-  });
-
-  transformStream.on('error', (err) => {
-    process.stderr.write(`An error occured while data transformation: ${err.message}`);
-  });
+  readableStream.on('error', onReadableStreamError);
+  writeableStream.on('error', onWritableStreamError);
+  transformStream.on('error', onTranformStreamError);
 }
 
 function modifyData() {
@@ -100,7 +104,8 @@ function modifyData() {
 
   Promise.all([
     isMandatoryParamsFilled(options),
-    isOutputFileExists(options.output),
+    isFileExists(options.input),
+    isFileExists(options.output),
   ])
     .then(() => {
       const readableStream = options.input
@@ -134,7 +139,7 @@ function modifyData() {
         writeableStream,
         (err) => {
           if (err) {
-            process.stderr.write('Pipeline failed. \n', err);
+            process.stderr.write('Pipeline failed. \n');
           } else {
             process.stderr.write('Pipeline succeeded. \n');
           }
@@ -142,7 +147,7 @@ function modifyData() {
       );
     })
     .catch((err) => {
-
+      process.stderr.write('An error occured while data modifying \n');
     });
 }
 
